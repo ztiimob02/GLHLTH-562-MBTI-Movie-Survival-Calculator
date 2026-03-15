@@ -1,1 +1,1 @@
-# GLHLTH-562-Final-Project-MBTI-Odds-of-Survival-in-Different-Movies
+# GLHLTH-562-Final-Project-MBTI-Movie-Survival-Calculator
