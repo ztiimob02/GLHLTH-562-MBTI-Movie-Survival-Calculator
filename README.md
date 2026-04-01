@@ -104,3 +104,13 @@ Example:
 - Input validation / Handling Errors
 - Output Display and explanation
 - GitHub management
+
+## How To Run
+1. Install required R packages:
+   - `shiny`, `httr`, `jsonlite`, `stringr`
+2. Set your OMDb API key as an environment variable:
+   - `Sys.setenv(OMDB_API_KEY = "YOUR_KEY")`
+3. Run the app:
+   - `shiny::runApp()`
+
+If no API key is set, the app will use placeholder movie data.
