@@ -3,6 +3,10 @@ library(httr)
 library(jsonlite)
 library(stringr)
 
+if (requireNamespace("dotenv", quietly = TRUE)) {
+  dotenv::load_dot_env()
+}
+
 MBTI_TYPES <- c(
   "INTJ","INTP","ENTJ","ENTP",
   "INFJ","INFP","ENFJ","ENFP",
@@ -13,10 +17,8 @@ MBTI_TYPES <- c(
 omdb_lookup <- function(title, api_key) {
   if (is.null(api_key) || api_key == "") {
     return(list(
-      Title = title,
-      Plot = "Placeholder plot summary. Add OMDb API key to fetch real data.",
-      Genre = "Unknown",
-      Response = "True"
+      Response = "False",
+      Error = "Missing OMDB_API_KEY. Set it and try again."
     ))
   }
 
@@ -59,7 +61,7 @@ ui <- fluidPage(
       textInput("movie3", "Movie 3"),
       actionButton("run", "Calculate Survival"),
       tags$hr(),
-      tags$small("OMDb API key read from OMDB_API_KEY env var. Placeholder data is used if missing.")
+      tags$small("OMDb API key read from OMDB_API_KEY env var or .env file.")
     ),
 
     mainPanel(
@@ -80,6 +82,9 @@ server <- function(input, output, session) {
     }
 
     api_key <- Sys.getenv("OMDB_API_KEY")
+    if (api_key == "") {
+      return(tags$p("Missing OMDB_API_KEY. Set it and try again."))
+    }
 
     cards <- lapply(movies, function(title) {
       data <- omdb_lookup(title, api_key)
