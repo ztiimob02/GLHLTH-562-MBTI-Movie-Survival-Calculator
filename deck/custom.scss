@@ -1,0 +1,30 @@
+/*-- scss:defaults --*/
+$body-bg: #0b0b0b !default;
+$body-color: #f5f5f5 !default;
+$link-color: #f4a261 !default;
+$selection-bg: #f4a261 !default;
+$selection-color: #0b0b0b !default;
+
+$presentation-heading-color: #f5f5f5 !default;
+$presentation-heading-font: "Spectral", "Georgia", serif !default;
+$font-family-sans-serif: "Spectral", "Georgia", serif !default;
+
+$code-block-bg: #111111 !default;
+$code-block-border-color: #222222 !default;
+$code-color: #f4a261 !default;
+
+$presentation-block-margin: 14px !default;
+
+/*-- scss:rules --*/
+.reveal .orange {
+  color: #f4a261;
+  font-weight: 600;
+}
+
+.reveal {
+  color: #f5f5f5;
+}
+
+.reveal ul, .reveal ol {
+  color: #f5f5f5;
+}

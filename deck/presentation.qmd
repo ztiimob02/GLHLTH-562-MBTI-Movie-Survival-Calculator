@@ -1,0 +1,74 @@
+---
+title: "MBTI Survival In The Movies"
+subtitle: "GLHLTH 562 Final Project"
+author: "Zada Tiimob & Khalid Tejan-Sie"
+format:
+  revealjs:
+    theme: ["night", "custom.scss"]
+    slide-number: true
+    transition: fade
+    background-transition: fade
+    code-line-numbers: false
+    center: false
+---
+
+## Product Idea
+
+- Guess how long your MBTI type survives in three movies.
+- Pull movie plots and genres from <span class="orange">OMDb</span>.
+- Use <span class="orange">MBTI traits</span> + genres + plot words to estimate:
+  - Chance of dying in the first half
+  - Chance of dying by the end
+- Optional <span class="orange">ChatGPT</span> scoring.
+
+## Inputs
+
+- MBTI type (16 options)
+- Three movie titles
+- Optional: “Use ChatGPT-based scoring” toggle
+
+## Data Sources
+
+- **OMDb API**
+  - Search by title: `?t=MovieTitle&plot=full`
+  - Uses: `Plot`, `Genre`, `Runtime`, `Year`, `imdbRating`
+- **MBTI descriptors**
+  - Four dichotomies (E/I, S/N, T/F, J/P)
+  - Type descriptions (ex: INTJ = strategic/independent)
+
+## Text & Trait Pipeline
+
+- Split plot into words with <span class="orange">tidytext</span>
+- Match words to <span class="orange">trait keywords</span>
+- Add <span class="orange">MBTI priors</span>
+- Add <span class="orange">genre risk weights</span> (Horror > Comedy)
+
+## Scoring Overview
+
+1. Start with a baseline
+2. Add genre effects
+3. Add MBTI trait effects
+4. Add plot keyword matches
+5. Lower scores for light genres
+
+
+## AI Scoring (Optional)
+
+- Calls <span class="orange">OpenAI Chat Completions</span>
+- Inputs: <span class="orange">MBTI traits</span>, plot, genre, rule-based scores
+- Outputs JSON with:
+  - `p_half`
+  - `p_end`
+
+## Tech Stack
+
+- **R / Shiny**
+- `httr`, `jsonlite` for API calls
+- `tidytext`, `stringr`, `dplyr` for text processing
+- Optional: OpenAI API for AI scoring
+
+## Next Steps
+
+- Optimize extraction of keywords from plot summaries
+- Allow input of 1-3 movies
+- Added sensitivity to grammatical or spelling errors for movies (drop-down menu of candidate movies)

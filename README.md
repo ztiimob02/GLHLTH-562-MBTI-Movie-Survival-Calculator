@@ -1,116 +1,75 @@
 # GLHLTH_562 Final Project: MBTI Movie Survival Calculator
 
-## I. Product Description
-This project is a Shiny web application that is able to predict how long a person with a given MBTI type would survive in three of their favorite movies. Users input their MBTI type along with three movie titles. The app then retrieves plot summaries and metadata from the OMDb API, extracts survival-relevant themes and character dynamics, and outputs a personalized survival estimate for each movie (e.g. probability of dying in the first half vs. by the end of the film). The product is interactive and tailored to the user’s specific input.
+## Overview
+This project is a Shiny web app that estimates how long a person with a given MBTI type would survive in three selected movies. The app pulls each movie’s plot and metadata from the OMDb API, extracts trait-relevant keywords, and computes survival probabilities for the first half and by the end of the film. An optional AI rationale can enrich the explanation.
 
-## II. Target Capabilities
-**User Input**
-Users interact with the tool by entering:
-- Their MBTI personality type
-- Their top three favorite movies
+## What It Does
+- Accepts an MBTI type and three movie titles
+- Retrieves plot summaries, genres, year, runtime, and IMDb rating from OMDb
+- Scores survival using a transparent rule-based MBTI trait model
+- Applies genre-based risk adjustments and MBTI trait priors
+- Optionally generates a short AI rationale (OpenAI) to explain the result
 
-The application processes this input and returns a personalized estimate of how long they would survive in each movie scenario.
+## Key Design Choices
+- **Rule-based scoring** for interpretability and reproducibility
+- **Trait dictionary + MBTI overlays** to connect personality to survivability
+- **Genre risk weights** to account for baseline movie danger
+- **Optional AI rationale** behind a checkbox to keep scoring transparent by default
 
-**API Integration**
-After the user enters a movie title, the application queries the OMDb API to retrieve:
-- Plot summary
-- Genre
-- Keywords from the description
-- Character types or narrative context
+## Data Sources
+- **OMDb API** for movie plot summaries and metadata
+- **MBTI trait descriptors** derived from preference-pair definitions and public type summaries
 
-This data will be used dynamically at runtime rather than relying on a static dataset. The use of an API is most appropriate as our product must respond to the choices inputted by the user in real time. If a static dataset were used, users would only have availability to a list of preselected movies. An API allows for a much more dynamic list that can obtain multiple queries regarding a given movie, providing more flexibility and a more interactive experience for the user.
+## Data Pipeline
+**Where the data comes from**
+- User input: MBTI type + three movie titles (Shiny form)
+- OMDb API: `http://www.omdbapi.com/?t=<TITLE>&plot=full&apikey=<KEY>`
+- Optional OpenAI API for AI rationale (if enabled)
 
-**(Optional/at our discretion) GenAI Model**
-A generative AI model could be used to:
-- Summarize survival-relevant traits from the movie plot
-- Interpret MBTI personality descriptions
-- Generate a narrative explanation such as:
-  “ENFPs tend to value compassion over accountability. In the film *Kill Bill (2003),* an ENFP would likely either allow him/herself to be killed prematurely to avoid the stress of being hunted or hesitate during a climactic fight and lose his/her life later on in the film.”
+**How the data is ingested**
+- `httr` sends HTTP requests to OMDb and OpenAI
+- Authentication via environment variables (`OMDB_API_KEY`, `OPENAI_API_KEY`)
+- Responses parsed from JSON with `jsonlite`
 
-## III. Data Source
-**Open Movie Database (OMDb)**
-`http://www.omdbapi.com/?t=The+Matrix&apikey=[INSERT KEY]`
-Provides access to movie metadata
+**How the data is processed**
+- Plot text is tokenized with `tidytext`
+- Tokens are matched to a trait keyword dictionary
+- MBTI trait priors and genre risk weights adjust baseline risk
+- Scores are summed and clamped to readable probabilities
 
-Returns:
-- Plot summary
-- Genre
-- Cast
-- Ratings
-- Runtime
+**What the output is**
+- A Shiny app that displays survival probabilities (halfway + end)
+- Optional AI rationale explaining the score
 
-**MBTI Personality Descriptions**
-MBTI personality descriptions will come from publicly available summaries of the Myers-Briggs Type Indicator, which categorize behavioral traits for each type. These descriptions will be used to construct a trait dictionary (e.g., analytical, impulsive, empathetic). The dictionary will be used to map different personality traits and extend those to the context of the movie inputted by the user.
-
-## IV. Technical Plan
-**Possible R packages:**
-- `shiny` – UI and user input
-- `httr` – API requests
-- `jsonlite` – parsing API responses
-- `tidytext` – keyword extraction from plot summaries
-- `dplyr` – data manipulation
-- `stringr` – text processing
-- `openai` – optional if we decide to incorporate AI functionality
-
-**Rough sketch of pipeline:**
-
-**Step 1. User Input (Shiny interface)**
-- MBTI type
-- Movie 1
-- Movie 2
-- Movie 3
-
-**Step 2. API Retrieval**
-For each movie:
-- Movie title → OMDb API request → Plot summary retrieval
-- Example in R: `url <- paste0("http://www.omdbapi.com/?t=", movie, "&apikey=KEY")`
-
-**Step 3. Text Processing (tidytext)**
-- Tokenize plot summary → extract keywords → compare with MBTI trait dictionary → generate survival scores
-- Example: plot tokens → match keywords (optimistic, brazen, sympathetic) → score compatibility with MBTI traits
-
-**Step 4. Survival Scoring Algorithm**
-Each defined keyword will contribute points to the survival score, either adding or subtracting from the score. Two score categories will be calculated:
-- Probability of death by first half
-- Probability of death by movie end
-
-**Example:**
-
-Trait | Movie Keyword | Impact on Survival
---- | --- | ---
-Optimistic | Gladiatorial | Shorter survival
-Brazen | Treacherous | Longer survival
-Sympathetic | Social conflict | Shorter survival
-
-Column (3) then acts as the basis for the probability of death during the first half of the movie and by the end of it (%).
-
-**Step 5. Output**
-Shiny interface displays the movie title, user’s MBTI type, and survival probabilities.
-
-Example:
-- Movie: *Alien*
-- MBTI: ENFP
-- Probability of dying in first half: 82%
-- Probability of dying by end of film: 97%
-
-## V. Division of Labor
-**Zada:**
-- OMDb API integration
-- Text Processing Pipeline
-- Personality trait dictionary
-
-**Khalid:**
-- Shiny Interface
-- Input validation / Handling Errors
-- Output Display and explanation
-- GitHub management
+## Repository Structure
+```
+project/
+├── README.md              # Pipeline documentation
+├── Survival Calculator.R  # Shiny app entry point
+├── R/                     # Supporting scripts or functions
+├── data/                  # Raw or cached data (if applicable)
+├── deck/                  # Presentation slides (qmd + html)
+└── .gitignore             # Exclude API keys, large files, etc.
+```
 
 ## How To Run
 1. Install required R packages:
-   - `shiny`, `httr`, `jsonlite`, `stringr`
-2. Set your OMDb API key as an environment variable:
-   - `Sys.setenv(OMDB_API_KEY = "YOUR_KEY")`
-3. Run the app:
-   - `shiny::runApp()`
+   - `shiny`, `httr`, `jsonlite`, `dplyr`, `tidyr`, `stringr`, `tidytext`
+   - optional: `dotenv` (to load `.env`)
+2. Create a `.env` file with your OMDb key:
+   - `OMDB_API_KEY=YOUR_KEY_HERE`
+3. (Optional) Add OpenAI credentials to enable AI rationale:
+   - `OPENAI_API_KEY=YOUR_KEY_HERE`
+   - `OPENAI_MODEL=gpt-4o-mini` (optional override)
+4. Run the app:
+   - `shiny::runApp("Survival Calculator.R")`
 
-If no API key is set, the app will use placeholder movie data.
+**Deployment (optional)**
+- Run locally in RStudio or the R console
+- For hosted demos, deploy the project directory to a Shiny server
+
+If `OMDB_API_KEY` is not set, the app will prompt you to configure it.
+
+## Notes
+- AI rationale is optional and does not always change the numeric score.
+- Plot summaries vary in quality; ambiguity can affect keyword matches.
