@@ -8,7 +8,7 @@ This project is a Shiny web app that estimates how long a person with a given MB
 - Retrieves plot summaries, genres, year, runtime, and IMDb rating from OMDb
 - Scores survival using a transparent rule-based MBTI trait model
 - Applies genre-based risk adjustments and MBTI trait priors
-- Optionally generates a short AI rationale (OpenAI) to explain the result
+- Optionally uses OpenAI scoring (via checkbox) to compute the survival scores
 
 ## Key Design Choices
 - **Rule-based scoring** for interpretability and reproducibility
