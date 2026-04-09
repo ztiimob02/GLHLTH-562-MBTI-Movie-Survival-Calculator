@@ -1,5 +1,5 @@
 ---
-title: "MBTI Survival In The Movies"
+title: "Movie Survival Calculator Using MBTI Types"
 subtitle: "GLHLTH 562 Final Project"
 author: "Zada Tiimob & Khalid Tejan-Sie"
 format:
@@ -65,7 +65,6 @@ format:
 - **R / Shiny**
 - `httr`, `jsonlite` for API calls
 - `tidytext`, `stringr`, `dplyr` for text processing
-- Optional: OpenAI API for AI scoring
 
 ## Next Steps
 
