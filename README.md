@@ -62,7 +62,6 @@ project/
    - `OMDB_API_KEY=YOUR_KEY_HERE`
 3. (Optional) Add OpenAI credentials to enable AI rationale:
    - `OPENAI_API_KEY=YOUR_KEY_HERE`
-   - `OPENAI_MODEL=gpt-4o-mini` (optional override)
 4. Run the app:
    - `shiny::runApp("app.R")`
 
