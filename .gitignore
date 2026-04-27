@@ -1,3 +1,17 @@
-.env
+# R
 .Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Environment / secrets
+.env
+
+# OS
 .DS_Store
+
+# Shiny
+rsconnect/
+
+# Logs
+*.log

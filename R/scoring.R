@@ -1,42 +1,9 @@
-# Shiny app for GLHLTH 562 Final Project
-# Minimal MVP: MBTI + 3 movies -> OMDb lookup -> rule-based survival scores
-
-library(shiny)
-library(httr)
-library(jsonlite)
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(tidytext)
-
-# ---- Config ----
-if (requireNamespace("dotenv", quietly = TRUE)) {
-  app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
-  env_candidates <- c(
-    if (!is.null(app_dir)) file.path(app_dir, ".env") else "",
-    ".env"
-  )
-  env_path <- env_candidates[nzchar(env_candidates) & file.exists(env_candidates)][1]
-  if (!is.na(env_path) && nzchar(env_path)) {
-    dotenv::load_dot_env(file = env_path)
-  }
-}
-
-get_omdb_key <- function() {
-  Sys.getenv("OMDB_API_KEY", unset = "")
-}
-
 get_openai_key <- function() {
   Sys.getenv("OPENAI_API_KEY", unset = "")
 }
 
 get_openai_model <- function() {
   Sys.getenv("OPENAI_MODEL", unset = "gpt-4o-mini")
-}
-
-safe_from_json <- function(txt) {
-  if (!is.character(txt) || length(txt) < 1 || is.na(txt) || !nzchar(txt)) return(NULL)
-  tryCatch(jsonlite::fromJSON(txt), error = function(e) NULL)
 }
 
 # ---- Data: MBTI trait dictionary ----
@@ -240,59 +207,33 @@ genre_risk <- tibble::tribble(
   "Music", -0.05, -0.06
 )
 
-# ---- Helpers ----
-fetch_movie <- function(title, key) {
-  if (title == "") return(NULL)
-  url <- paste0("http://www.omdbapi.com/?t=", URLencode(title), "&plot=full&apikey=", key)
-  res <- httr::GET(url)
-  if (httr::http_error(res)) {
-    return(list(title = title, error = paste("HTTP error:", httr::status_code(res))))
-  }
-  json <- safe_from_json(httr::content(res, as = "text", encoding = "UTF-8"))
-  if (is.null(json)) return(list(title = title, error = "Could not parse OMDb response."))
-  if (!is.null(json$Response) && json$Response == "False") {
-    return(list(title = title, error = json$Error %||% "Movie not found."))
-  }
-  list(
-    title = json$Title %||% title,
-    plot = json$Plot %||% "",
-    genre = json$Genre %||% "",
-    runtime = json$Runtime %||% "",
-    year = json$Year %||% "",
-    imdb = json$imdbRating %||% ""
-  )
-}
-
-`%||%` <- function(a, b) {
-  if (is.null(a) || is.na(a) || !is.character(a) || !nzchar(a)) b else a
-}
-
+# ---- Scoring ----
 score_survival <- function(mbti, plot_text, genre_text) {
   if (is.null(plot_text) || is.na(plot_text)) plot_text <- ""
   if (is.null(genre_text) || is.na(genre_text)) genre_text <- ""
   traits <- build_mbti_traits(mbti)
   if (nrow(traits) == 0) return(list(p_half = NA_real_, p_end = NA_real_, matched = character(0)))
-  
+
   keywords <- trait_keywords %>% inner_join(traits, by = "trait")
-  
+
   genres <- if (nzchar(genre_text)) str_split(genre_text, ",\\s*")[[1]] else character(0)
   genre_base <- genre_risk %>% filter(genre %in% genres)
   base_half <- 0.5 + sum(genre_base$base_half, na.rm = TRUE)
   base_end <- 0.7 + sum(genre_base$base_end, na.rm = TRUE)
-  
+
   # Extra penalty reduction for playful genres / rom-com combination
   if (all(c("Romance", "Comedy") %in% genres)) {
     base_half <- base_half - 0.08
     base_end <- base_end - 0.10
   }
-  
+
   # Slice-of-life heuristic: drama + comedy + no high-risk genres
   high_risk <- c("Horror", "Thriller", "Action", "Crime", "War", "Mystery", "Sci-Fi")
   if (all(c("Drama", "Comedy") %in% genres) && !any(genres %in% high_risk)) {
     base_half <- base_half - 0.06
     base_end <- base_end - 0.08
   }
-  
+
   # Lighthearted scaling: reduce baseline but preserve variation
   playful <- c("Comedy", "Romance", "Family", "Animation", "Musical", "Music")
   playful_count <- sum(genres %in% playful)
@@ -301,31 +242,31 @@ score_survival <- function(mbti, plot_text, genre_text) {
     base_half <- base_half * scale
     base_end <- base_end * scale
   }
-  
+
   tokens <- tibble::tibble(text = plot_text) %>%
     tidytext::unnest_tokens(word, text) %>%
     filter(!is.na(word))
-  
+
   matched <- tokens %>%
     inner_join(keywords, by = c("word" = "keyword"))
-  
+
   priors <- trait_priors %>% inner_join(traits, by = "trait")
   prior_half <- sum(priors$prior_half, na.rm = TRUE)
   prior_end <- sum(priors$prior_end, na.rm = TRUE)
-  
+
   score_half <- base_half + prior_half + sum(matched$impact_half, na.rm = TRUE)
   score_end <- base_end + prior_end + sum(matched$impact_end, na.rm = TRUE)
-  
+
   # Clamp to [0.02, 0.98] for readability
   p_half <- min(max(score_half, 0.02), 0.98)
   p_end <- min(max(score_end, 0.02), 0.98)
-  
+
   # Final cap for very light films: keep <10% but allow MBTI variation
   if (!any(genres %in% high_risk) && playful_count > 0) {
     p_half <- min(p_half, 0.09)
     p_end <- min(p_end, 0.12)
   }
-  
+
   list(
     p_half = p_half,
     p_end = p_end,
@@ -342,7 +283,7 @@ format_pct <- function(x) {
 score_survival_ai <- function(mbti, movie, rule_score) {
   key <- get_openai_key()
   if (key == "") return(list(p_half = NA_real_, p_end = NA_real_, rationale = "Missing OPENAI_API_KEY."))
-  
+
   model <- get_openai_model()
   prompt <- paste0(
     "You are scoring survival probability for a fictional character with MBTI type ", mbti, ". ",
@@ -356,7 +297,7 @@ score_survival_ai <- function(mbti, movie, rule_score) {
     "Rule-based estimate: half=", round(rule_score$p_half, 2), ", end=", round(rule_score$p_end, 2), "\n",
     "Matched keywords: ", paste(rule_score$matched, collapse = ", ")
   )
-  
+
   body <- list(
     model = model,
     messages = list(
@@ -366,7 +307,7 @@ score_survival_ai <- function(mbti, movie, rule_score) {
     temperature = 0.4,
     max_tokens = 200
   )
-  
+
   res <- httr::POST(
     "https://api.openai.com/v1/chat/completions",
     httr::add_headers(
@@ -375,230 +316,28 @@ score_survival_ai <- function(mbti, movie, rule_score) {
     ),
     body = jsonlite::toJSON(body, auto_unbox = TRUE)
   )
-  
+
   if (httr::http_error(res)) {
     return(list(p_half = NA_real_, p_end = NA_real_, rationale = "OpenAI API error."))
   }
-  
+
   json <- jsonlite::fromJSON(httr::content(res, as = "text", encoding = "UTF-8"))
   content <- json$choices[[1]]$message$content %||% ""
-  
+
   if (!is.character(content)) {
     return(list(p_half = NA_real_, p_end = NA_real_, rationale = "AI response content was not text."))
   }
-  
+
   cleaned <- gsub("^```json\\s*|```$", "", content)
   cleaned <- trimws(cleaned)
   parsed <- safe_from_json(cleaned)
   if (is.null(parsed)) {
     return(list(p_half = NA_real_, p_end = NA_real_, rationale = "AI response could not be parsed."))
   }
-  
+
   list(
     p_half = as.numeric(parsed$p_half),
     p_end = as.numeric(parsed$p_end),
     rationale = as.character(parsed$rationale)
   )
 }
-
-# ---- UI ----
-ui <- fluidPage(
-  tags$head(
-    tags$style(HTML("@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Spectral:wght@400;600&display=swap');")),
-    tags$style(HTML("
-      :root {
-        --bg-dark: #120b0f;
-        --bg-mid: #1b1020;
-        --card: #241723;
-        --card-alt: #2a1c29;
-        --text: #f3e9e3;
-        --muted: #c7b3a8;
-        --accent: #d1495b;
-        --accent-2: #f4a261;
-      }
-      body {
-        background: radial-gradient(1200px 600px at 20% -10%, #2b1630 0%, var(--bg-dark) 55%, #0d080c 100%);
-        color: var(--text);
-        font-family: 'Spectral', serif;
-      }
-      .title {
-        font-family: 'Creepster', 'Spectral', serif;
-        font-size: 34px;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
-        color: var(--accent-2);
-        text-shadow: 0 2px 10px rgba(0,0,0,0.6);
-      }
-      .subtitle { color: var(--muted); margin-bottom: 16px; }
-      .panel {
-        background: linear-gradient(160deg, var(--card) 0%, var(--card-alt) 100%);
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-        border: 1px solid rgba(255,255,255,0.06);
-      }
-      .result-card {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 10px;
-      }
-      .muted { color: var(--muted); font-size: 12px; }
-      .pill { display: inline-block; background: var(--accent-2); color: #1b1020; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-      .sources {
-        background: rgba(255,255,255,0.04);
-        border-radius: 10px;
-        padding: 12px;
-        margin-top: 10px;
-        font-size: 12px;
-        color: var(--muted);
-        border: 1px solid rgba(255,255,255,0.08);
-      }
-      .btn-primary {
-        background: var(--accent);
-        border-color: var(--accent);
-      }
-      .btn-primary:hover {
-        background: #b63c4c;
-        border-color: #b63c4c;
-      }
-      .form-control,
-      .selectize-input,
-      .selectize-control.single .selectize-input {
-        background: #1a111a;
-        color: var(--accent-2);
-        border: 1px solid rgba(244, 162, 97, 0.55);
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
-      }
-      .form-control::placeholder {
-        color: rgba(244, 162, 97, 0.6);
-      }
-      .selectize-dropdown,
-      .selectize-dropdown .option {
-        background: #1a111a;
-        color: var(--accent-2);
-      }
-      .selectize-dropdown .active {
-        background: #2a1c29;
-        color: var(--accent-2);
-      }
-    "))
-  ),
-  fluidRow(
-    column(
-      8,
-      div(class = "title", "MBTI Survival In The Movies"),
-      div(class = "subtitle", "Predicts how long your personality would last in three films")
-    ),
-    column(
-      4,
-      div(class = "muted", "Requires OMDB_API_KEY set in environment")
-    )
-  ),
-  fluidRow(
-    column(
-      4,
-      div(class = "panel",
-          selectInput("mbti", "MBTI Type", choices = mbti_types, selected = "ENFP"),
-          textInput("movie1", "Movie 1", placeholder = "Alien"),
-          textInput("movie2", "Movie 2", placeholder = "Get Out"),
-          textInput("movie3", "Movie 3", placeholder = "The Dark Knight"),
-          checkboxInput("use_ai", "Use ChatGPT-based scoring (requires OPENAI_API_KEY)", value = FALSE),
-          actionButton("go", "Run Prediction", class = "btn-primary"),
-          br(),
-          br(),
-          div(class = "muted", "Tip: Use full titles for better OMDb matches.")
-      )
-    ),
-    column(
-      8,
-      div(class = "panel",
-          uiOutput("results")
-      )
-    )
-  ),
-  fluidRow(
-    column(
-      12,
-      div(class = "sources",
-          strong("Data sources: "),
-          "Movie plots and metadata are pulled from the OMDb API `Plot` field via title search (`t=`). ",
-          "MBTI trait descriptors are derived from preference-pair definitions (Myers & Briggs Foundation) ",
-          "and type summaries (16Personalities)."
-      )
-    )
-  ),
-  fluidRow(
-    column(
-      12,
-      div(class = "sources",
-          strong("Debug:"), " ",
-          verbatimTextOutput("debug_out")
-      )
-    )
-  )
-)
-
-# ---- Server ----
-server <- function(input, output, session) {
-  output$debug_out <- renderText({
-    paste(
-      "OMDB_API_KEY set:", ifelse(get_omdb_key() != "", "yes", "no"),
-      "| OPENAI_API_KEY set:", ifelse(get_openai_key() != "", "yes", "no"),
-      "| Movies input:", paste(trimws(c(input$movie1, input$movie2, input$movie3)), collapse = " | ")
-    )
-  })
-  
-  movies <- eventReactive(input$go, {
-    key <- get_omdb_key()
-    shiny::validate(shiny::need(key != "", "Missing OMDB_API_KEY environment variable."))
-    
-    titles <- c(input$movie1, input$movie2, input$movie3)
-    titles <- trimws(titles)
-    shiny::validate(shiny::need(all(titles != ""), "Please enter three movie titles."))
-    
-    lapply(titles, function(t) fetch_movie(t, key))
-  })
-  
-  output$results <- renderUI({
-    req(movies())
-    res <- movies()
-    
-    cards <- lapply(res, function(m) {
-      if (is.null(m)) {
-        return(div(class = "result-card", strong("Movie not found"), div(class = "muted", "Check spelling or include the year.")))
-      }
-      if (!is.null(m$error)) {
-        return(div(class = "result-card", strong("Movie lookup failed"), div(class = "muted", m$error)))
-      }
-      
-      score <- score_survival(input$mbti, m$plot, m$genre)
-      ai_score <- NULL
-      if (isTRUE(input$use_ai)) {
-        ai_score <- score_survival_ai(input$mbti, m, score)
-      }
-      
-      final_half <- if (!is.null(ai_score) && !is.na(ai_score$p_half)) ai_score$p_half else score$p_half
-      final_end <- if (!is.null(ai_score) && !is.na(ai_score$p_end)) ai_score$p_end else score$p_end
-      
-      div(class = "result-card",
-          div(strong(m$title), " ", span(class = "pill", input$mbti)),
-          div(class = "muted", paste(m$year, m$genre, m$runtime, "IMDb:", m$imdb)),
-          br(),
-          div("Probability of dying in first half: ", strong(format_pct(final_half))),
-          div("Probability of dying by end of film: ", strong(format_pct(final_end))),
-          if (!is.null(ai_score) && !is.na(ai_score$p_half)) {
-            div(class = "muted", "AI rationale: ", ai_score$rationale)
-          },
-          if (length(score$matched) > 0) {
-            div(class = "muted", "Matched keywords: ", paste(score$matched, collapse = ", "))
-          }
-      )
-    })
-    
-    do.call(tagList, cards)
-  })
-}
-
-shinyApp(ui, server)

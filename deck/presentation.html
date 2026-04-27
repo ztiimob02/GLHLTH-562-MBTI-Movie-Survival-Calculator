@@ -10,7 +10,7 @@
   <meta name="generator" content="quarto-1.7.32">
 
   <meta name="author" content="Zada Tiimob &amp; Khalid Tejan-Sie">
-  <title>MBTI Survival In The Movies</title>
+  <title>Movie Survival Calculator Using MBTI Types</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
@@ -127,7 +127,7 @@
     <div class="slides">
 
 <section id="title-slide" class="quarto-title-block center">
-  <h1 class="title">MBTI Survival In The Movies</h1>
+  <h1 class="title">Movie Survival Calculator Using MBTI Types</h1>
   <p class="subtitle">GLHLTH 562 Final Project</p>
 
 <div class="quarto-title-authors">
@@ -180,7 +180,6 @@ Zada Tiimob &amp; Khalid Tejan-Sie
 <ul>
 <li>Split plot into words with <span class="orange">tidytext</span></li>
 <li>Match words to <span class="orange">trait keywords</span></li>
-<li>Add <span class="orange">MBTI priors</span></li>
 <li>Add <span class="orange">genre risk weights</span> (Horror &gt; Comedy)</li>
 </ul>
 </section>
@@ -194,25 +193,20 @@ Zada Tiimob &amp; Khalid Tejan-Sie
 <li>Lower scores for light genres</li>
 </ol>
 </section>
-<section id="ai-scoring-optional" class="slide level2">
-<h2>AI Scoring (Optional)</h2>
+<section id="ai-scoring" class="slide level2">
+<h2>AI Scoring</h2>
 <ul>
-<li>Calls <span class="orange">OpenAI Chat Completions</span></li>
+<li>Calls <span class="orange">OpenAI</span></li>
 <li>Inputs: <span class="orange">MBTI traits</span>, plot, genre, rule-based scores</li>
-<li>Outputs JSON with:
-<ul>
-<li><code>p_half</code></li>
-<li><code>p_end</code></li>
-</ul></li>
+<li>Outputs JSON with probabilities</li>
 </ul>
 </section>
-<section id="tech-stack" class="slide level2">
-<h2>Tech Stack</h2>
+<section id="tools-used" class="slide level2">
+<h2>Tools Used</h2>
 <ul>
 <li><strong>R / Shiny</strong></li>
 <li><code>httr</code>, <code>jsonlite</code> for API calls</li>
 <li><code>tidytext</code>, <code>stringr</code>, <code>dplyr</code> for text processing</li>
-<li>Optional: OpenAI API for AI scoring</li>
 </ul>
 </section>
 <section id="next-steps" class="slide level2">

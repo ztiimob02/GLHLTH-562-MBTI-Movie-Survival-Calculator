@@ -8,7 +8,7 @@ This project is a Shiny web app that estimates how long a person with a given MB
 - Retrieves plot summaries, genres, year, runtime, and IMDb rating from OMDb
 - Scores survival using a transparent rule-based MBTI trait model
 - Applies genre-based risk adjustments and MBTI trait priors
-- Optionally uses OpenAI scoring (via checkbox) to compute the survival scores
+- Optionally uses OpenAI scoring to compute survival scores
 
 ## Key Design Choices
 - **Rule-based scoring** for interpretability and reproducibility
@@ -45,8 +45,10 @@ This project is a Shiny web app that estimates how long a person with a given MB
 ```
 project/
 ├── README.md              # Pipeline documentation
-├── Survival Calculator.R  # Shiny app entry point
+├── app.R                  # Shiny app entry point
 ├── R/                     # Supporting scripts or functions
+│   ├── omdb.R             # OMDb fetch + helpers
+│   └── scoring.R          # MBTI traits + scoring logic
 ├── data/                  # Raw or cached data (if applicable)
 ├── deck/                  # Presentation slides (qmd + html)
 └── .gitignore             # Exclude API keys, large files, etc.
@@ -62,7 +64,7 @@ project/
    - `OPENAI_API_KEY=YOUR_KEY_HERE`
    - `OPENAI_MODEL=gpt-4o-mini` (optional override)
 4. Run the app:
-   - `shiny::runApp("Survival Calculator.R")`
+   - `shiny::runApp("app.R")`
 
 **Deployment (optional)**
 - Run locally in RStudio or the R console

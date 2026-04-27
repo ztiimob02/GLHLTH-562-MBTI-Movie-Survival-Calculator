@@ -40,7 +40,6 @@ format:
 
 - Split plot into words with <span class="orange">tidytext</span>
 - Match words to <span class="orange">trait keywords</span>
-- Add <span class="orange">MBTI priors</span>
 - Add <span class="orange">genre risk weights</span> (Horror > Comedy)
 
 ## Scoring Overview
@@ -52,15 +51,13 @@ format:
 5. Lower scores for light genres
 
 
-## AI Scoring (Optional)
+## AI Scoring
 
-- Calls <span class="orange">OpenAI Chat Completions</span>
+- Calls <span class="orange">OpenAI</span>
 - Inputs: <span class="orange">MBTI traits</span>, plot, genre, rule-based scores
-- Outputs JSON with:
-  - `p_half`
-  - `p_end`
+- Outputs JSON with probabilities
 
-## Tech Stack
+## Tools Used
 
 - **R / Shiny**
 - `httr`, `jsonlite` for API calls
