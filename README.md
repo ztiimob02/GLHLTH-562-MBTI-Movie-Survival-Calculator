@@ -1,7 +1,7 @@
 # GLHLTH_562 Final Project: MBTI Movie Survival Calculator
 
 ## Overview
-This project is a Shiny web app that estimates how long a person with a given MBTI type would survive in three selected movies. The app pulls each movie’s plot and metadata from the OMDb API, extracts trait-relevant keywords, and computes survival probabilities for the first half and by the end of the film. An optional AI rationale can enrich the explanation.
+This project is a Shiny web app that estimates how long a person with a given MBTI type would survive in three selected movies. The app pulls each movie’s plot and metadata from the OMDb API, extracts trait-relevant keywords, and computes survival probabilities for the first half and by the end of the film.
 
 ## What It Does
 - Accepts an MBTI type and three movie titles
@@ -24,7 +24,6 @@ This project is a Shiny web app that estimates how long a person with a given MB
 **Where the data comes from**
 - User input: MBTI type + three movie titles (Shiny form)
 - OMDb API: `http://www.omdbapi.com/?t=<TITLE>&plot=full&apikey=<KEY>`
-- Optional OpenAI API for AI rationale (if enabled)
 
 **How the data is ingested**
 - `httr` sends HTTP requests to OMDb and OpenAI
@@ -39,7 +38,6 @@ This project is a Shiny web app that estimates how long a person with a given MB
 
 **What the output is**
 - A Shiny app that displays survival probabilities (halfway + end)
-- Optional AI rationale explaining the score
 
 ## Repository Structure
 ```
@@ -60,7 +58,7 @@ project/
    - optional: `dotenv` (to load `.env`)
 2. Create a `.env` file with your OMDb key:
    - `OMDB_API_KEY=YOUR_KEY_HERE`
-3. (Optional) Add OpenAI credentials to enable AI rationale:
+3. (Optional) Add OpenAI credentials to enable AI scoring: 
    - `OPENAI_API_KEY=YOUR_KEY_HERE`
 4. Run the app:
    - `shiny::runApp("app.R")`
@@ -72,5 +70,5 @@ project/
 If `OMDB_API_KEY` is not set, the app will prompt you to configure it.
 
 ## Notes
-- AI rationale is optional and does not always change the numeric score.
+- AI use is optional and does not always change the numeric score.
 - Plot summaries vary in quality; ambiguity can affect keyword matches.
